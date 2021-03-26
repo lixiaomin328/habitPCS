@@ -1,0 +1,142 @@
+\documentclass[12pt]{article}
+
+\usepackage{amssymb,amsmath,amsfonts,eurosym,geometry,ulem,graphicx,caption,color,setspace,sectsty,comment,footmisc,caption,natbib,pdflscape,subfigure,array,hyperref}
+
+\normalem
+
+\onehalfspacing
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}{Proposition}
+\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+
+\newtheorem{hyp}{Hypothesis}
+\newtheorem{subhyp}{Hypothesis}[hyp]
+\renewcommand{\thesubhyp}{\thehyp\alph{subhyp}}
+
+\newcommand{\red}[1]{{\color{red} #1}}
+\newcommand{\blue}[1]{{\color{blue} #1}}
+
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\arraybackslash\hspace{0pt}}m{#1}}
+
+\geometry{left=1.0in,right=1.0in,top=1.0in,bottom=1.0in}
+
+\begin{document}
+
+\begin{titlepage}
+\title{PCS method on habit\thanks{abc}}
+\date{\today}
+\maketitle
+
+\setcounter{page}{0}
+\thispagestyle{empty}
+\end{titlepage}
+\pagebreak \newpage
+y = logit(wx+b) + $l_1$ norm(w)
+
+\begin{itemize}
+\item y: whether post in a given day, range from 
+2019,1,20- the latest weibo day.
+
+Take only $y$ in 10\% to 90\% weibo time for balancing.
+\item Xs:
+    \item Number of posts in last 1,2,7,14 days
+    \item Number of total likes in last 1,2,7,14 days
+    \item Number of total comments in last 1,2,7,14 days
+    \item Number of total retweets in last 1,2,7,14 days
+    \item Day of streak, 0 means didn't post yesterday
+    \item Day of week
+    \item Month indicator
+    \item Year indicator
+    \item Indicator of lockdown
+\end{itemize}
+
+x dimension: 21*n\_observation
+
+Sample Coefficient:
+[Number of weibo last day: 'nL1', 'nL2', 'nL7', 'nL14', 'nLCR1', 'nLCR2', 'nLCR7',
+       'nLCR14', 'nCCR1', 'nCCR2', 'nCCR7', 'nCCR14', 'nRCR1', 'nRCR2',
+       'nRCR7', 'nRCR14', 'nStreak', 'dayOfWeek', 'year', 'month',
+       'indiLockdown'
+       
+Person 1: [[ 0.28 -0.25  0.06  0.07 -0.01  0.08
+  -0.01 -0.03 -0.02  0.10  0.05 -0.01
+   0.  0.  0.  0.  0.09  0.13
+  0 -0.09 -0.25(lockdown)]]
+
+Person 2:
+[[ 0.14 -0.21 0.002  0.10  0.006  0.07
+   0. -0.05 -0.11 0.14  0.02  0.01
+   0. 0. 0.36969745  0.          0.18559359  0.11714435
+  -0.00088912 -0.04054681 -0.27660076(lockdown)]]
+
+
+Habit Measure:
+AUC: calculated for five-folds validation AUC.
+
+0.58
+0.95
+0.57
+0.77
+0.67
+0.73
+0.99
+0.60
+\doublespacing
+
+
+\section{Introduction} \label{sec:introduction}
+
+\section{Literature Review} \label{sec:literature}
+
+\section{Data} \label{sec:data}
+
+\section{Results} \label{sec:result}
+
+\section{Discussions} \label{sec:discussion}
+
+\section{Conclusion} \label{sec:conclusion}
+
+
+
+\singlespacing
+\setlength\bibsep{0pt}
+\bibliographystyle{my-style}
+\bibliography{Placeholder}
+
+
+
+\clearpage
+
+\onehalfspacing
+
+\section*{Tables} \label{sec:tab}
+\addcontentsline{toc}{section}{Tables}
+
+
+
+\clearpage
+
+\section*{Figures} \label{sec:fig}
+\addcontentsline{toc}{section}{Figures}
+
+%\begin{figure}[hp]
+%  \centering
+%  \includegraphics[width=.6\textwidth]{../fig/placeholder.pdf}
+%  \caption{Placeholder}
+%  \label{fig:placeholder}
+%\end{figure}
+
+
+
+
+\clearpage
+
+\section*{Appendix A. Placeholder} \label{sec:appendixa}
+\addcontentsline{toc}{section}{Appendix A}
+
+
+
+\end{document}
