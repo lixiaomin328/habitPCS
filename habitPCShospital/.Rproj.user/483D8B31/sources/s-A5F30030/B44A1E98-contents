@@ -1,0 +1,294 @@
+lasso_individual =  function(lambdas = 10^seq(-0.5,-3, by = -0.05), data, normalize = TRUE, type = 'all',
+                             pre_post = FALSE){
+  data          = data[!is.na(lag_shift_compliance) & !is.na(opposite_compliant)]
+  pred_list     = as.list(seq_len(5))
+  model_list    = as.list(seq_len(5))
+  holdout_data  = data[folds == 6]
+  train_data    = data[folds <  6]
+  if(type == 'all'){
+    X = model.matrix(compliant~epi_id  + time_elapsed + lag_compliant + time_since_last_opp + time_since_last_compliant + I(time_since_last_compliant^2) +
+                       patient_encounter*time_elapsed + opposite_compliant + factor(hour_slot) + time_elapsed:factor(hour_slot) + 
+                       prev_unit_freq + unit_prev_freq + prev_dow_freq + dow_prev_freq + 
+                       prev_loc_freq + loc_prev_freq +  others_mean_in_loc + experience +
+                       lag_compliant:time_since_last_opp + entry_indicator*lag_compliant + 
+                       I(time_since_last_opp^2) + lag_compliant:I(time_since_last_opp^2) +
+                       time_off + I(time_off^2) + streak +
+                       lag_shift_compliance + as.factor(month) - 1, data = data)
+  }
+  if(pre_post == TRUE){
+    X = model.matrix(compliant~epi_id  + time_elapsed + lag_compliant + time_since_last_opp + time_since_last_compliant + I(time_since_last_compliant^2) +
+                       patient_encounter*time_elapsed + opposite_compliant + factor(hour_slot) + time_elapsed:factor(hour_slot) + 
+                       prev_unit_freq + unit_prev_freq + prev_dow_freq + dow_prev_freq + 
+                       prev_loc_freq + loc_prev_freq +  others_mean_in_loc +
+                       lag_compliant:time_since_last_opp + entry_indicator*lag_compliant + 
+                       I(time_since_last_opp^2) + lag_compliant:I(time_since_last_opp^2) +
+                       time_off + I(time_off^2) + streak +
+                       lag_shift_compliance + as.factor(month) +
+                       is_last_epi:pre_habit + is_last_epi:post_habit - 1, 
+                     data = data)
+  }
+  for(i in 1:5){
+    validate_data = data[folds == i]
+    X_train = X[data[folds!=i & folds < 6, which = TRUE],]
+    lasso = glmnet(
+      x      = X_train,
+      y      = data[folds != i & folds < 6]$compliant,
+      alpha  = 1,
+      lambda = lambdas,
+      family = "binomial",
+      intercept = TRUE,
+      standardize = TRUE
+    )
+    X_validate = X[data[folds==i, which = TRUE],]
+    pred = predict(lasso, newx = X_validate, type = 'response')
+    roc  = sapply(c(1:ncol(pred)), function(u) roc(response = validate_data$compliant, predictor = pred[,u],
+                                                        quiet = TRUE, plot = FALSE)$auc[1])
+    pred_list[[i]] = roc
+    model_list[[i]] = lasso
+  }
+  X_full    = X[data[folds < 6, which = TRUE],]
+  X_holdout = X[data[folds == 6, which = TRUE],]
+  all_roc    = do.call('rbind', pred_list)
+  lambda_roc = apply(all_roc, 2, mean)
+  full_model = glmnet(
+    x      = X_full,
+    y      = train_data$compliant,
+    alpha  = 1,
+    lambda = lambdas,
+    family = "binomial",
+    intercept = TRUE,
+    standardize = normalize
+  )
+  best_lambda   = lambdas[which.max(lambda_roc)]
+  best_coef     = coef(full_model, s = best_lambda)
+  insample_pred = predict(full_model, newx = X_full, s = best_lambda, type = "response")
+  pred_holdout  = predict(full_model, newx = X_holdout, s = best_lambda, type = "response")
+  roc_train     = roc(response = train_data$compliant, predictor = c(insample_pred), plot = FALSE,
+                      quiet = TRUE)
+  roc_holdout   = roc(response = holdout_data$compliant, predictor = c(pred_holdout), plot = FALSE,
+                      quiet = TRUE)
+  
+  return(
+    list("full_model" = full_model, "best_lambda" = best_lambda, "best_coef" = best_coef,
+         "auc_holdout" = roc_holdout$auc[1],
+         "auc_train" = roc_train$auc[1],
+         "holdout_y" = holdout_data$compliant, "holdout_pred" = c(pred_holdout),
+         "insample_pred" = c(insample_pred), 
+         "hospital_tag"   = as.character(data$hospital_tag[1]),
+         "X_full" = X_full, "X_holdout" = X_holdout)
+  )
+}
+cvlasso_individual =  function(data, normalize = TRUE, type = 'all',
+                               pre_post = FALSE){
+  data          = data[!is.na(lag_shift_compliance) & !is.na(opposite_compliant)]
+  holdout_data  = data[folds == 6]
+  train_data    = data[folds <  6]
+  if(type == 'all'){
+    X = model.matrix(compliant~epi_id  + time_elapsed + lag_compliant + time_since_last_opp + time_since_last_compliant + I(time_since_last_compliant^2) +
+                       patient_encounter*time_elapsed + opposite_compliant + factor(hour_slot) + time_elapsed:factor(hour_slot) + 
+                       prev_unit_freq + unit_prev_freq + prev_dow_freq + dow_prev_freq + 
+                       prev_loc_freq + loc_prev_freq +  others_mean_in_loc + experience +
+                       lag_compliant:time_since_last_opp + entry_indicator*lag_compliant + 
+                       I(time_since_last_opp^2) + lag_compliant:I(time_since_last_opp^2) +
+                       time_off + I(time_off^2) + streak +
+                       lag_shift_compliance + as.factor(month) - 1, data = data)
+  }
+  if(pre_post == TRUE){
+    X = model.matrix(compliant~epi_id  + time_elapsed + lag_compliant + time_since_last_opp + time_since_last_compliant + I(time_since_last_compliant^2) +
+                       patient_encounter*time_elapsed + opposite_compliant + factor(hour_slot) + time_elapsed:factor(hour_slot) + 
+                       prev_unit_freq + unit_prev_freq + prev_dow_freq + dow_prev_freq + 
+                       prev_loc_freq + loc_prev_freq +  others_mean_in_loc + experience +
+                       lag_compliant:time_since_last_opp + entry_indicator*lag_compliant + 
+                       I(time_since_last_opp^2) + lag_compliant:I(time_since_last_opp^2) +
+                       time_off + I(time_off^2) + streak +
+                       lag_shift_compliance + as.factor(month) +
+                       is_last_epi:pre_habit + is_last_epi:post_habit - 1, 
+                     data = data)
+  }
+  X_full    = X[data[folds < 6, which = TRUE],]
+  X_holdout = X[data[folds == 6, which = TRUE],]
+  full_model     = cv.glmnet(x = X_full, y = train_data$compliant, type.measure = 'auc', nfolds = 5, foldid = train_data$folds,
+                             family = 'binomial', standardize = TRUE)
+  best_lambda   = full_model$lambda.min
+  best_coef     = coef(full_model, s = 'lambda.min')
+  insample_pred = predict(full_model, newx = X_full, s = best_lambda, type = "response")
+  pred_holdout  = predict(full_model, newx = X_holdout, s = best_lambda, type = "response")
+  roc_train     = roc(response = train_data$compliant, predictor = c(insample_pred), plot = FALSE,
+                      quiet = TRUE)
+  roc_holdout   = roc(response = holdout_data$compliant, predictor = c(pred_holdout), plot = FALSE,
+                      quiet = TRUE)
+  sdd           = c(1,apply(X_full, 2, sd))
+  coef_scaled   = best_coef*sdd
+  return(
+    list("full_model" = full_model, "best_lambda" = best_lambda, "best_coef" = best_coef,
+         "coef_scaled" = coef_scaled,
+         "auc_holdout" = roc_holdout$auc[1],
+         "auc_train" = roc_train$auc[1],
+         "holdout_y" = holdout_data$compliant, "holdout_pred" = c(pred_holdout),
+         "insample_pred" = c(insample_pred), 
+         "hospital_tag"   = as.character(data$hospital_tag[1]))
+  )
+}
+
+auc_chunks_cum = function(model){
+  data       = sub_proventix[hospital_tag == model$hospital_tag]
+  max_shift  = max(data$shift7id)
+  data       = data[!is.na(lag_shift_compliance) & !is.na(opposite_compliant)]
+  data       = data[order(shift7id, datetime)]
+  X_pred     = model.matrix(compliant~epi_id  + time_elapsed + lag_compliant + time_since_last_opp + time_since_last_compliant + I(time_since_last_compliant^2) +
+                              patient_encounter*time_elapsed + opposite_compliant + factor(hour_slot) + time_elapsed:factor(hour_slot) + 
+                              prev_unit_freq + unit_prev_freq + prev_dow_freq + dow_prev_freq + 
+                              prev_loc_freq + loc_prev_freq +  others_mean_in_loc + experience +
+                              lag_compliant:time_since_last_opp + entry_indicator*lag_compliant + 
+                              I(time_since_last_opp^2) + lag_compliant:I(time_since_last_opp^2) +
+                              time_off + I(time_off^2) + streak +
+                              lag_shift_compliance + as.factor(month) - 1, data = data)
+  data       = data[,c("shift7id", "compliant", "epi_id", "datetime")][order(shift7id, datetime)]
+  chunk_ends = seq(2, max_shift, 2)
+  get_auc = function(end_time){
+    ytrue      = data[shift7id <= end_time]$compliant
+    pred       = predict(model$full_model, newx = X_pred[data[shift7id<= end_time, which = TRUE],], 
+                         s = model$full_model$lambda.min, type = 'response')
+    if(mean(ytrue) != 0){
+      roc  = roc(response = factor(ytrue, levels = c(0,1)), predictor = c(pred), plot = FALSE,
+                 quiet = TRUE)
+      return(roc$auc[1])  
+    }
+    if(mean(ytrue) == 0){
+      return(NA)
+    }
+  }
+  return(sapply(chunk_ends, get_auc))
+}
+
+auc_exp_fit = function(chunk){
+  ## THIS FUNCTION TAKES A SEQUENCE OF NUMBERS (e.g. SEQUENCE OF AUC RETURNED BY THE individual_auc_seq FUNCTION) AND FIT AN EXPONENTIAL CURVE OF THE FORM a+bexp(-ct)
+  ##-----INPUT-----
+  # chunk         : sequence of numbers
+  ##-----OUTPUT-----
+  # a,b,c         : parameters of the exponential curve 
+  # fit           : fitted values as predicted by the exponential curve
+  # Rsq           : R-squared of the fit
+  T_grid = seq(2, 2*length(chunk), 2)             
+  init   = list(a = 0.1, b = 0.01, c = 0.002)
+  fit    = NULL
+  i=1
+  while(is.null(fit) & i<500){
+    fit    = tryCatch(nlsLM(chunk~a-(b/(c*T_grid))*(1-exp(-c*T_grid)), start = init, 
+                            lower = c(0, 0, 0),
+                            upper = c(Inf, Inf, Inf),
+                            control = list(maxiter = 1000)), error = function(e) NULL)
+    init   = lapply(init, function(u) u*1.1)
+    i      = i+1
+  }
+  return(list(
+    "a" = coef(fit)[1],
+    "b" = coef(fit)[2],
+    "c" = coef(fit)[3],
+    "fit" = fit$m$fitted(),
+    "Rsq" = 1-sum(fit$m$resid()^2)/((length(chunk)-1)*var(chunk, na.rm = TRUE))
+  ))
+}
+
+quick_auc_plot = function(i){
+  rr = habitized_caregv[i]
+  a = rr$a; b = abs(rr$b); c = rr$c
+  true = hand_auc_seq[[clean_ind[i]]]
+  dt = data.table(time = seq(5, length(true)+4, 1),
+                  true_val = true)
+  dt[,pred_f := a-(b/(c*time))*(1-exp(-c*time))]
+  dt[,pred_g := a-b*exp(-c*time)]
+  dt[,Tstar95:=habitized_caregv[i]$Tstar95]
+  ggplot(dt, aes(x = time)) + geom_point(aes(y = true_val)) + 
+    geom_line(aes(y = pred_f, colour = 'Fitted f'), size = 1.2) +
+    geom_line(aes(y = pred_g, colour = 'Fitted g'), size = 1.2) +
+    theme_bw() + labs(x = 'Shifts since device installation', y = 'AUC') +
+    geom_vline(aes(xintercept = Tstar95, colour = 'Time to habit formation')) +
+    scale_colour_manual('', values = c('salmon', 'forestgreen', 'blue'))
+}
+#------------------------------------------------------------------------------
+#------------------------------AUC PLOT WITH FITTED CURVES---------------------
+#------------------------------------------------------------------------------
+hand_auc_plot = function(id){
+  i  = coef_hand[hospital_tag == id, which = TRUE]
+  rr = hand_exp_fit[[i]]
+  a = rr$a; b = abs(rr$b); c = rr$c
+  true = hand_auc_seq[[i]]
+  dt = data.table(time = seq(2, length(true)*2, 2),
+                  true_val = true)
+  dt[,pred_f := a-(b/(c*time))*(1-exp(-c*time))]
+  dt[,pred_g := a-b*exp(-c*time)]
+  dt[,Tstar95:=speed_habit_hand[hospital_tag == id]$Tstar95[1]]
+  ggplot(dt, aes(x = time)) + geom_point(aes(y = true_val)) + 
+    geom_line(aes(y = pred_f, colour = 'Fitted A'), size = 1.2) +
+    geom_line(aes(y = pred_g, colour = 'Fitted D'), size = 1.2) +
+    theme_bw() + labs(x = 'Shifts since start of observed period', y = 'AUC') +
+    geom_vline(aes(xintercept = Tstar95), colour = 'blue') +
+    scale_colour_manual('', values = c('salmon', 'forestgreen', 'blue')) +
+    xlim(c(0,150)) +
+    annotate(geom= 'text', x = 18, y = 0.6, label = 'Time to habit formation', color = 'blue', angle = 90)+
+    theme(legend.position = 'bottom')
+}
+
+
+auc_lm_fit = function(chunk){
+  ## THIS FUNCTION TAKES A SEQUENCE OF NUMBERS (e.g. SEQUENCE OF AUC RETURNED BY THE individual_auc_seq FUNCTION) AND FIT AN EXPONENTIAL CURVE OF THE FORM a+bexp(-ct)
+  ##-----INPUT-----
+  # chunk         : sequence of numbers
+  ##-----OUTPUT-----
+  # a,b,c         : parameters of the exponential curve 
+  # fit           : fitted values as predicted by the exponential curve
+  # Rsq           : R-squared of the fit
+  T_grid = seq(2, length(chunk)*2, 2)             
+  fit    = lm(chunk ~ T_grid)
+  return(list(
+    "int"   = coef(fit)[1],
+    "slope" = coef(fit)[2],
+    "fit" = fit$fitted.values,
+    "Rsq" = summary(fit)$r.squared
+  ))
+}
+
+summary_hand = function(data){
+  su_shift = data[entry_indicator == 1,.(epi_per_shift = no_epi[1],
+                                        shift_length = shift_length[1],
+                                       avg_switch_room = mean(time_since_last_opp),
+                                       time_off = mean(time_off)), list(hospital_tag, shift7id)]
+  su_shift = su_shift[,.(epi_per_shift = mean(epi_per_shift),
+                         shift_length = mean(shift_length),
+                         avg_switch_room = mean(avg_switch_room),
+                         time_off = mean(time_off)/60), hospital_tag]
+  su_id    = data[,.(avg_compliance = mean(compliant), 
+                     total_shifts = max(shift7id),
+                     total_locations = uniqueN(location),
+                     total_hospitals = uniqueN(unit_id),
+                     avg_epilength = mean(epilength),
+                     patient_enc   = mean(patient_encounter),
+                     experience = experience[1]), hospital_tag]
+  su_table = merge(su_id, su_shift, by = c("hospital_tag"))
+  su_all   = su_table
+  su_table[,shift_length:=as.numeric(shift_length)]
+  su_table = su_table[,-c("hospital_tag")][,.(Mean = lapply(.SD, function(x) round(mean(x), 2)),
+                                                                SD = lapply(.SD, function(x) round(sd(x), 2)),
+                                                                # Q10 = lapply(.SD, function(x) round(as.numeric(quantile(x, probs = 0.1)), 3)),
+                                                                Q25 = lapply(.SD, function(x) round(as.numeric(quantile(x, probs = 0.25)), 2)),
+                                                                Median = lapply(.SD, function(x) round(median(x), 2)),
+                                                                Q75 = lapply(.SD, function(x) round(as.numeric(quantile(x, probs = 0.75)), 2))
+                                                                # Q90 = lapply(.SD, function(x) round(as.numeric(quantile(x, probs = 0.9)), 3)),
+                                                                # Min = lapply(.SD, function(x) round(min(x), 3)), Max = lapply(.SD, function(x) round(max(x), 3)))
+                       )]
+  su_table[,Variable:=c("Compliance", "Total number of shifts", "Number of visited rooms", "Number of hospital units", "Avg. episode length (mins)",
+                                "Avg. freq. of patient encounter", "Days worked at badge date", "Avg. number of episodes per shift", "Avg. shift length (mins)",
+                                "Avg time between episodes (mins)", "Avg time off between shifts (hours)")]
+  su_table = su_table[,c(6,1:5)]
+  return(list("su_table" = su_table,
+              "su_all" = su_all))
+}
+ttest_hand = function(data1, data2){
+  data = rbind(data1, data2)
+  out  = data[,-c("hospital_tag")][,.(t.stat = lapply(.SD, function(x) round(as.numeric(t.test(x[1:nrow(data1)], x[(nrow(data1)+1):nrow(data)], alternative = 'two.sided')$statistic), 3)),
+                               pval   = lapply(.SD, function(x) round(as.numeric(t.test(x[1:nrow(data1)], x[(nrow(data1)+1):nrow(data)], alternative = 'two.sided')$p.value), 3))
+  )]
+  return(out)
+}
+

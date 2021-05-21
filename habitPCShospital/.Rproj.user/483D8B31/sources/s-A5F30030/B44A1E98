@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1621541030832.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "B44A1E98",
+    "lastKnownWriteTime" : 1621536401,
+    "last_content_update" : 1621536401,
+    "path" : "~/Documents/habitPCShospital/proventix_fn.R",
+    "project_path" : "proventix_fn.R",
+    "properties" : {
+        "cursorPosition" : "15,62",
+        "scrollLine" : "1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

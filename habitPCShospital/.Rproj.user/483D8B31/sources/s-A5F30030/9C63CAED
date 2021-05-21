@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1621536769452.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "9C63CAED",
+    "lastKnownWriteTime" : 1621536409,
+    "last_content_update" : 1621536409,
+    "path" : "~/Documents/habitPCShospital/reward_reval_hand_R.r",
+    "project_path" : "reward_reval_hand_R.r",
+    "properties" : {
+        "cursorPosition" : "10,40",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
